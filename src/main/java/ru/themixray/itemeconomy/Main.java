@@ -1,10 +1,12 @@
 package ru.themixray.itemeconomy;
 
 import com.google.common.io.ByteArrayDataInput;
+import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.IOException;
@@ -17,6 +19,7 @@ public class Main extends JavaPlugin {
     @Override
     public void onEnable() {
         Config.loadConfig(new UnrealConfig(this, getDataFolder(), "config.yml"));
+        Bukkit.getServicesManager().register(Economy.class, new VaultLayer(), this, ServicePriority.High);
     }
 
     @Override
