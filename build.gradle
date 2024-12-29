@@ -9,7 +9,7 @@ version = '0.1.0'
 
 spigot {
     desc {
-        main "ru.themixray.itemeconomy.ItemEconomy"
+        main "ru.themixray.itemeconomy.Main"
         apiVersion "1.17"
         named "ItemEconomy"
         depend "Vault"
