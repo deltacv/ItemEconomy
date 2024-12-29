@@ -1,0 +1,60 @@
+plugins {
+    id 'java'
+    id 'fr.il_totore.manadrop' version '0.4.3'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+group = 'ru.themixray.itemeconomy'
+version = '0.1.0'
+
+spigot {
+    desc {
+        main "ru.themixray.itemeconomy.ItemEconomy"
+        apiVersion "1.8"
+        named "ItemEconomy"
+        depend "Vault"
+    }
+}
+
+processResources.finalizedBy(spigotPlugin)
+
+repositories {
+    mavenLocal()
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    compileOnly "org.spigotmc:spigot-api:1.8.9-R0.1-SNAPSHOT"
+    compileOnly "com.github.MilkBowl:VaultAPI:1.7"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+shadowJar {
+    archiveFileName = "ItemEconomy-${version}.jar"
+}
+
+build {
+    dependsOn(shadowJar)
+}
+
+def targetJavaVersion = 17
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
