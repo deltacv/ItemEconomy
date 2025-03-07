@@ -1,6 +1,5 @@
 package ru.themixray.itemeconomy;
 
-import com.google.common.io.ByteArrayDataInput;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -9,11 +8,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 public class Main extends JavaPlugin {
     @Override
@@ -28,12 +23,55 @@ public class Main extends JavaPlugin {
     }
 
     public static List<ItemStack> getInventory(Player player) {
-        return Arrays.stream(player.getInventory().getContents()).map(o -> o == null ? new ItemStack(Material.AIR) : o).toList();
+        ArrayList<ItemStack> items = new ArrayList<>();
+
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null) {
+                items.add(item);
+            }
+        }
+
+        for(ItemStack item : player.getEnderChest().getContents()) {
+            if (item != null) {
+                items.add(item);
+            }
+        }
+
+        return items.stream()
+                .map(o -> o == null ? new ItemStack(Material.AIR) : o)
+                .toList();
     }
 
     public static boolean removeItems(Player player, Material type, int amount) {
-        if(player.getInventory().all(type).values().stream().mapToInt(ItemStack::getAmount).sum()<amount)return false;
-        player.getInventory().removeItem(new ItemStack(type,amount));
+        // also remove from enderchest
+        int removed = 0;
+
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == type) {
+                if (item.getAmount() > amount - removed) {
+                    item.setAmount(item.getAmount() - (amount - removed));
+                    removed = amount;
+                    break;
+                } else {
+                    removed += item.getAmount();
+                    item.setAmount(0);
+                }
+            }
+        }
+
+        for (ItemStack item : player.getEnderChest().getContents()) {
+            if (item != null && item.getType() == type) {
+                if (item.getAmount() > amount - removed) {
+                    item.setAmount(item.getAmount() - (amount - removed));
+                    removed = amount;
+                    break;
+                } else {
+                    removed += item.getAmount();
+                    item.setAmount(0);
+                }
+            }
+        }
+
         return true;
     }
 

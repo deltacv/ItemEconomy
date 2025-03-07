@@ -6,8 +6,10 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -53,81 +55,94 @@ public class VaultLayer implements Economy {
     }
 
     @Override
-    public double getBalance(String playerName) {
+    public EconomyResponse withdrawPlayer(String playerName, double amount) {
         Player player = Bukkit.getPlayer(playerName);
-        if (player != null) {
-            return Main.getInventory(player).stream()
-                .filter(Objects::nonNull)
-                .filter(i -> i.getType().equals(Config.ITEM))
-                .mapToInt(ItemStack::getAmount)
-                .sum();
-        } else {
+        if (player == null) {
+            return new EconomyResponse(amount, 0, EconomyResponse.ResponseType.FAILURE, "Player not found");
+        }
+
+        int totalNuggetsToRemove = (int) (amount * 9); // Convert to nuggets
+
+        Inventory inventory = player.getInventory();
+        ItemStack[] contents = inventory.getContents();
+
+        int removedNuggets = 0;
+
+        for (ItemStack item : contents) {
+            if (item == null || removedNuggets >= totalNuggetsToRemove) continue;
+
+            if (item.getType().equals(Config.NUGGET)) {
+                int remove = Math.min(item.getAmount(), totalNuggetsToRemove - removedNuggets);
+                item.setAmount(item.getAmount() - remove);
+                removedNuggets += remove;
+            } else if (item.getType().equals(Config.INGOT)) {
+                int remove = Math.min(item.getAmount(), (totalNuggetsToRemove - removedNuggets) / 9);
+                item.setAmount(item.getAmount() - remove);
+                removedNuggets += remove * 9;
+            } else if (item.getType().equals(Config.BLOCK)) {
+                int remove = Math.min(item.getAmount(), (totalNuggetsToRemove - removedNuggets) / 81);
+                item.setAmount(item.getAmount() - remove);
+                removedNuggets += remove * 81;
+            }
+        }
+
+        if (removedNuggets < totalNuggetsToRemove) {
+            return new EconomyResponse(amount, getBalance(playerName), EconomyResponse.ResponseType.FAILURE, "Insufficient funds");
+        }
+
+        return new EconomyResponse(amount, getBalance(playerName), EconomyResponse.ResponseType.SUCCESS, null);
+    }
+
+    @Override
+    public EconomyResponse depositPlayer(String playerName, double amount) {
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player == null) {
+            return new EconomyResponse(amount, getBalance(playerName), EconomyResponse.ResponseType.FAILURE, "Player not found");
+        }
+
+        Inventory inventory = player.getInventory();
+
+        int totalNuggets = (int) (amount * 9);
+
+        int blocks = totalNuggets / 81;
+        int ingots = (totalNuggets % 81) / 9;
+        int nuggets = totalNuggets % 9;
+
+        // Create the items to be added
+        Main.addItems(player, Config.BLOCK, blocks);
+        Main.addItems(player, Config.INGOT, ingots);
+        Main.addItems(player, Config.NUGGET, nuggets);
+
+        return new EconomyResponse(amount, getBalance(playerName), EconomyResponse.ResponseType.SUCCESS, null);
+    }
+
+    @Override
+    public double getBalance(String playerName) {
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player == null) {
             return 0;
         }
+
+        int totalNuggets = 0;
+
+        for (ItemStack item : Main.getInventory(player)) {
+            if (item == null) continue;
+
+            if (item.getType().equals(Config.BLOCK)) {
+                totalNuggets += item.getAmount() * 81;
+            } else if (item.getType().equals(Config.INGOT)) {
+                totalNuggets += item.getAmount() * 9;
+            } else if (item.getType().equals(Config.NUGGET)) {
+                totalNuggets += item.getAmount();
+            }
+        }
+
+        return totalNuggets / 9.0; // Keep decimal precision
     }
 
     @Override
     public boolean has(String playerName, double amount) {
         return getBalance(playerName) >= amount;
-    }
-
-    @Override
-    public EconomyResponse withdrawPlayer(String playerName, double amount) {
-        if (amount == 0) return new EconomyResponse(amount,getBalance(playerName),EconomyResponse.ResponseType.SUCCESS,null);
-        if (amount < 0) return depositPlayer(playerName,-amount);
-
-        if (!has(playerName, amount))
-            return new EconomyResponse(
-                amount,
-                getBalance(playerName),
-                EconomyResponse.ResponseType.FAILURE,
-                "Недостаточно средств");
-
-        Player player;
-        if ((player = Bukkit.getPlayer(playerName)) == null) {
-            return new EconomyResponse(
-                    amount,
-                    getBalance(playerName),
-                    EconomyResponse.ResponseType.FAILURE,
-                    "Игрок офлайн");
-        }
-
-        if (!Main.removeItems(player, Config.ITEM, (int) amount)) {
-            return new EconomyResponse(
-                    amount,
-                    getBalance(playerName),
-                    EconomyResponse.ResponseType.FAILURE,
-                    "Недостаточно средств");
-        }
-
-        return new EconomyResponse(
-                amount,
-                getBalance(playerName),
-                EconomyResponse.ResponseType.SUCCESS,
-                null);
-    }
-
-    @Override
-    public EconomyResponse depositPlayer(String playerName, double amount) {
-        if (amount == 0) return new EconomyResponse(amount,getBalance(playerName),EconomyResponse.ResponseType.SUCCESS,null);
-        if (amount < 0) return withdrawPlayer(playerName,-amount);
-
-        Player player;
-        if ((player = Bukkit.getPlayer(playerName)) == null) {
-            return new EconomyResponse(
-                    amount,
-                    getBalance(playerName),
-                    EconomyResponse.ResponseType.FAILURE,
-                    "Игрок офлайн");
-        }
-
-        Main.addItems(player, Config.ITEM, (int) amount);
-
-        return new EconomyResponse(
-                amount,
-                getBalance(playerName),
-                EconomyResponse.ResponseType.SUCCESS,
-                null);
     }
 
     @Override

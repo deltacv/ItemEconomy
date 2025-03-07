@@ -1,5 +1,7 @@
-item: "diamond"
+nugget: "GOLD_NUGGET"
+ingot: "GOLD_INGOT"
+block: "GOLD_BLOCK"
 
-format: "{}$"
-plural: "алмазы"
-singular: "алмаз"
+format: "G${}"
+plural: "Golden"
+singular: "Gold"
